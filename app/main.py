@@ -18,44 +18,76 @@ logging.basicConfig(
 
 log = logging.getLogger("main")
 
+def _to_float(value) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return 0.0
+
+def get_shipping_cost(item: dict) -> float:
+    opts = item.get("shippingOptions") or []
+    if not opts:
+        return 0.0
+    ship_cost = (opts[0] or {}).get("shippingCost") or {}
+    return _to_float(ship_cost.get("value"))
+
+def get_item_price(item: dict) -> float:
+    price = item.get("price") or {}
+    return _to_float(price.get("value"))
+
+def total_cost(item: dict) -> float:
+    return get_item_price(item) + get_shipping_cost(item)
 
 def build_embed(item: dict, query_name: str) -> dict:
-    title = item.get("title", "Senza titolo")[:256]
+    title = (item.get("title") or "Senza titolo")[:256]
 
-    price = item.get("price", {})
-    price_str = f'{price.get("value","?")} {price.get("currency","")}'.strip()
+    price = item.get("price") or {}
+    price_val = price.get("value", "?")
+    price_cur = price.get("currency", "")
+    price_str = f"{price_val} {price_cur}".strip()
 
-    # --- COSTO SPEDIZIONE ---
-    shipping_str = "N/D"
-    shipping_opts = item.get("shippingOptions")
-    if shipping_opts and len(shipping_opts) > 0:
-        ship_cost = shipping_opts[0].get("shippingCost")
-        if ship_cost:
-            shipping_str = f'{ship_cost.get("value","?")} {ship_cost.get("currency","")}'
+    # Shipping
+    shipping_str = "0.00"
+    ship_val = 0.0
+    ship_cur = price_cur
+
+    shipping_opts = item.get("shippingOptions") or []
+    if shipping_opts:
+        ship_cost = (shipping_opts[0] or {}).get("shippingCost") or {}
+        ship_val = _to_float(ship_cost.get("value"))
+        ship_cur = ship_cost.get("currency", ship_cur)
+        shipping_str = f"{ship_cost.get('value','0.00')} {ship_cur}".strip()
+
+    # Totale
+    item_val = _to_float(price.get("value"))
+    tot_val = item_val + ship_val
+    total_str = f"{tot_val:.2f} {ship_cur}".strip()
 
     url = item.get("itemWebUrl")
 
     embed = {
         "title": title,
         "url": url,
-
         "description": (
             f"🔎 **Query:** {query_name}\n"
             f"💰 **Prezzo:** {price_str}\n"
-            f"📦 **Spedizione:** {shipping_str}"
+            f"📦 **Spedizione:** {shipping_str}\n"
+            f"🧾 **Totale:** **{total_str}**"
         )[:4096],
-
-        "color": 0x2ECC71  # verde elegante
     }
 
-    # --- IMMAGINE GRANDE IN TESTA ---
+    # ✅ Data/ora pubblicazione eBay (mostrata tramite timestamp embed)
+    # eBay Browse API spesso fornisce itemCreationDate
+    created = item.get("itemCreationDate")
+    if created:
+        embed["timestamp"] = created  # ISO 8601
+
+    # ✅ Immagine grande in testa
     img = (item.get("image") or {}).get("imageUrl")
     if img:
         embed["image"] = {"url": img}
 
     return embed
-
-
 
 def make_runner(cfg_query: QueryCfg, ebay: EbayClient, store: StateStore):
     discord = DiscordWebhookClient(cfg_query.discord.webhook_url)
@@ -71,8 +103,10 @@ def make_runner(cfg_query: QueryCfg, ebay: EbayClient, store: StateStore):
                 currency=cfg_query.currency,
                 delivery_country=cfg_query.delivery_country,
                 sort=cfg_query.sort,
-                limit=25,
+                limit=100,
             )
+            items = sorted(items, key=total_cost, reverse=True)
+
             qlog.info("eBay returned %d items", len(items))
 
             now = int(time.time())
@@ -81,6 +115,22 @@ def make_runner(cfg_query: QueryCfg, ebay: EbayClient, store: StateStore):
 
             for it in items:
                 item_id = it.get("itemId")
+
+                # Scarta inserzioni "a varianti" (dropdown)
+                if it.get("itemGroupType") or it.get("itemGroupId") or it.get("itemGroupHref"):
+                    qlog.debug("Skipping variant/group listing: itemId=%s itemGroupType=%s",
+                               it.get("itemId"), it.get("itemGroupType"))
+                    continue
+
+                title = it.get("title", "")
+                if not title_passes_filters(
+                        title,
+                        must_any=cfg_query.title_must_contain_any,
+                        must_not=cfg_query.title_must_not_contain_any,
+                ):
+                    qlog.debug("Filtered out by title rules: %r", title)
+                    continue
+
                 if not item_id:
                     qlog.debug("Skipping item without itemId: %s", it)
                     continue
@@ -155,6 +205,20 @@ def main():
     log.info("Scheduler started. Ctrl+C to stop.")
     sched.block_forever()
 
+def title_passes_filters(title: str, must_any=None, must_not=None) -> bool:
+    t = (title or "").lower()
+
+    if must_any:
+        must_any_l = [x.lower() for x in must_any]
+        if not any(x in t for x in must_any_l):
+            return False
+
+    if must_not:
+        must_not_l = [x.lower() for x in must_not]
+        if any(x in t for x in must_not_l):
+            return False
+
+    return True
 
 if __name__ == "__main__":
     main()

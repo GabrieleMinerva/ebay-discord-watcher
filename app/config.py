@@ -21,6 +21,8 @@ class QueryCfg:
     discord: DiscordCfg = None
     delivery_country: Optional[str] = None
     sort: Optional[str] = None
+    title_must_contain_any: Optional[List[str]] = None
+    title_must_not_contain_any: Optional[List[str]] = None
 
 @dataclass
 class AppCfg:
@@ -47,7 +49,9 @@ def load_config(path: str) -> AppCfg:
             location_country=q.get("location_country"),
             discord=DiscordCfg(webhook_url=q["discord"]["webhook_url"]),
             sort = q.get("sort"),
-            delivery_country = q.get("delivery_country")
+            delivery_country = q.get("delivery_country"),
+            title_must_contain_any=q.get("title_must_contain_any"),
+            title_must_not_contain_any=q.get("title_must_not_contain_any")
         ))
 
     return AppCfg(
