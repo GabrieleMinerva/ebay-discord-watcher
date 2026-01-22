@@ -1,0 +1,21 @@
+ebay:
+  marketplace_id: EBAY_IT
+  base_url: https://api.ebay.com
+  
+discord:
+  webhook_url: "your_hook_url"
+
+storage:
+  sqlite_path: ./posted_items.sqlite
+
+queries:
+  - name: "game boy"
+    enabled: true
+    interval_seconds: 30
+    keywords: "game boy"
+    price_min: 1
+    price_max: 60
+    currency: EUR
+    location_country: IT
+    discord:
+      webhook_url: "your_hook_url"
