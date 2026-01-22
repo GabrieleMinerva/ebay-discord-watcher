@@ -20,26 +20,41 @@ log = logging.getLogger("main")
 
 
 def build_embed(item: dict, query_name: str) -> dict:
-    title = item.get("title", "Senza titolo")
+    title = item.get("title", "Senza titolo")[:256]
+
     price = item.get("price", {})
     price_str = f'{price.get("value","?")} {price.get("currency","")}'.strip()
-    item_web_url = item.get("itemWebUrl")
 
-    img = None
-    if item.get("image") and item["image"].get("imageUrl"):
-        img = item["image"]["imageUrl"]
+    # --- COSTO SPEDIZIONE ---
+    shipping_str = "N/D"
+    shipping_opts = item.get("shippingOptions")
+    if shipping_opts and len(shipping_opts) > 0:
+        ship_cost = shipping_opts[0].get("shippingCost")
+        if ship_cost:
+            shipping_str = f'{ship_cost.get("value","?")} {ship_cost.get("currency","")}'
 
-    subtitle = f"Query: {query_name} • Prezzo: {price_str}"
+    url = item.get("itemWebUrl")
 
     embed = {
         "title": title,
-        "url": item_web_url,
-        "description": subtitle,
-        "fields": [],
+        "url": url,
+
+        "description": (
+            f"🔎 **Query:** {query_name}\n"
+            f"💰 **Prezzo:** {price_str}\n"
+            f"📦 **Spedizione:** {shipping_str}"
+        )[:4096],
+
+        "color": 0x2ECC71  # verde elegante
     }
+
+    # --- IMMAGINE GRANDE IN TESTA ---
+    img = (item.get("image") or {}).get("imageUrl")
     if img:
-        embed["thumbnail"] = {"url": img}
+        embed["image"] = {"url": img}
+
     return embed
+
 
 
 def make_runner(cfg_query: QueryCfg, ebay: EbayClient, store: StateStore):
@@ -51,12 +66,11 @@ def make_runner(cfg_query: QueryCfg, ebay: EbayClient, store: StateStore):
         try:
             items = ebay.search_items(
                 keywords=cfg_query.keywords,
-                category_id=cfg_query.category_id,
-                condition_ids=cfg_query.condition_ids,
                 price_min=cfg_query.price_min,
                 price_max=cfg_query.price_max,
                 currency=cfg_query.currency,
-                location_country=cfg_query.location_country,
+                delivery_country=cfg_query.delivery_country,
+                sort=cfg_query.sort,
                 limit=25,
             )
             qlog.info("eBay returned %d items", len(items))

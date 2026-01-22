@@ -19,6 +19,8 @@ class QueryCfg:
     currency: str = "EUR"
     location_country: Optional[str] = None
     discord: DiscordCfg = None
+    delivery_country: Optional[str] = None
+    sort: Optional[str] = None
 
 @dataclass
 class AppCfg:
@@ -43,7 +45,9 @@ def load_config(path: str) -> AppCfg:
             price_max=q.get("price_max"),
             currency=q.get("currency", "EUR"),
             location_country=q.get("location_country"),
-            discord=DiscordCfg(webhook_url=q["discord"]["webhook_url"])
+            discord=DiscordCfg(webhook_url=q["discord"]["webhook_url"]),
+            sort = q.get("sort"),
+            delivery_country = q.get("delivery_country")
         ))
 
     return AppCfg(
