@@ -1,19 +1,16 @@
 # eBay → Discord Watcher
 
-Bot Python che monitora ricerche eBay e pubblica nuovi annunci su Discord.
+bot that trace eBay search and post them on Discord server.
 
 ## Setup
 
-1) Installa dipendenze  
-pip install -r requirements.txt
-
-2) Crea file .env con:
-EBAY_CLIENT_ID
-EBAY_CLIENT_SECRET
-
-3) Configura config.yaml:
-- keywords ricerca
-- webhook Discord
-
-4) Avvia:
-python -m app.main
+1. install python
+2. pip install -r requirements.txt
+3. modify .env file and add:
+  - EBAY_CLIENT_ID
+  - EBAY_CLIENT_SECRET
+4.Customize config.yaml properties:
+  - keywords
+  - webhook Discord
+5. lanch python -m app.main
+6.enjoy
