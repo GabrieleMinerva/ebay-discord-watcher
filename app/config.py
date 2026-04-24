@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
+import os
 import yaml
 
 @dataclass
@@ -30,9 +31,23 @@ class AppCfg:
     storage: Dict[str, Any]
     queries: List[QueryCfg]
 
+
+def _expand_env_vars(value: Any) -> Any:
+    """Recursively expands ${VAR} placeholders using process environment."""
+    if isinstance(value, dict):
+        return {k: _expand_env_vars(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env_vars(v) for v in value]
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    return value
+
+
 def load_config(path: str) -> AppCfg:
     with open(path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f)
+
+    raw = _expand_env_vars(raw)
 
     queries = []
     for q in raw["queries"]:
@@ -48,8 +63,8 @@ def load_config(path: str) -> AppCfg:
             currency=q.get("currency", "EUR"),
             location_country=q.get("location_country"),
             discord=DiscordCfg(webhook_url=q["discord"]["webhook_url"]),
-            sort = q.get("sort"),
-            delivery_country = q.get("delivery_country"),
+            sort=q.get("sort"),
+            delivery_country=q.get("delivery_country"),
             title_must_contain_any=q.get("title_must_contain_any"),
             title_must_not_contain_any=q.get("title_must_not_contain_any")
         ))

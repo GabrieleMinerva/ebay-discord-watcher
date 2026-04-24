@@ -1,20 +1,19 @@
-# Config locale di esempio (sviluppo).
-# Per Render usa preferibilmente config.render.yaml + env vars.
+# Config specifica per deploy Render.
+# Supporta placeholder ${VAR} risolti a runtime da environment.
 
+# Parametri eBay Browse API
 ebay:
   # Marketplace target (EBAY_IT, EBAY_US, ...)
   marketplace_id: EBAY_IT
   # Endpoint base API eBay
   base_url: https://api.ebay.com
 
-# Sezione legacy non utilizzata dal runtime attuale (webhook è per-query)
-discord:
-  webhook_url: "your_hook_url"
-
+# Persistenza stato annunci già pubblicati
 storage:
-  # DB locale per item già notificati
-  sqlite_path: ./posted_items.sqlite
+  # Valore preso da env: SQLITE_PATH
+  sqlite_path: ${SQLITE_PATH}
 
+# Elenco query monitorate
 queries:
   - name: "game boy"
     enabled: true
@@ -26,5 +25,5 @@ queries:
     currency: EUR
     location_country: IT
     discord:
-      # Webhook Discord per questa query
-      webhook_url: "your_hook_url"
+      # Webhook preso da env: DISCORD_WEBHOOK_URL
+      webhook_url: "${DISCORD_WEBHOOK_URL}"

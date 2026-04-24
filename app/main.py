@@ -173,8 +173,9 @@ def main():
     log.info("ENV EBAY_CLIENT_SECRET present? %s", "EBAY_CLIENT_SECRET" in os.environ)
     log.info("ENV EBAY_SCOPE present? %s", "EBAY_SCOPE" in os.environ)
 
-    cfg = load_config("config.yaml")
-    log.info("Loaded config: %d queries", len(cfg.queries))
+    cfg_path = os.getenv("CONFIG_PATH", "config.yaml")
+    cfg = load_config(cfg_path)
+    log.info("Loaded config from %s: %d queries", cfg_path, len(cfg.queries))
 
     store_path = cfg.storage.get("sqlite_path", "./posted_items.sqlite")
     log.info("State store sqlite_path=%s", store_path)
