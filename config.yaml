@@ -1,7 +1,11 @@
+# Config locale di esempio (sviluppo).
+# Per Render usa preferibilmente config.render.yaml + env vars.
+
 ebay:
   marketplace_id: EBAY_IT
   base_url: https://api.ebay.com
-  
+
+# Sezione legacy opzionale (usata solo se non definisci routes).
 discord:
   webhook_url: "your_hook_url"
 
@@ -14,8 +18,18 @@ queries:
     interval_seconds: 30
     keywords: "game boy"
     price_min: 1
-    price_max: 60
+    price_max: 300
     currency: EUR
     location_country: IT
-    discord:
-      webhook_url: "your_hook_url"
+
+    # Esempio multi-canale/multi-hook con filtri specifici per route.
+    routes:
+      - name: "generale"
+        webhook_url: "your_hook_url"
+
+      - name: "top-deals"
+        webhook_url: "your_other_hook_url"
+        price_max: 80
+        title_must_not_contain_any:
+          - "difetti"
+          - "non funzionante"

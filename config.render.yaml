@@ -1,0 +1,31 @@
+# Config specifica per deploy Render.
+# Supporta placeholder ${VAR} risolti a runtime da environment.
+
+ebay:
+  marketplace_id: EBAY_IT
+  base_url: https://api.ebay.com
+
+storage:
+  sqlite_path: ${SQLITE_PATH}
+
+queries:
+  - name: "game boy"
+    enabled: true
+    interval_seconds: 30
+    keywords: "game boy"
+    price_min: 1
+    price_max: 300
+    currency: EUR
+    location_country: IT
+
+    # Route multipla: ogni route ha il suo webhook + filtri opzionali.
+    routes:
+      - name: "generale"
+        webhook_url: "${DISCORD_WEBHOOK_URL}"
+
+      - name: "occasioni"
+        webhook_url: "${DISCORD_WEBHOOK_URL_DEALS}"
+        price_max: 80
+        title_must_not_contain_any:
+          - "difetti"
+          - "non funzionante"
