@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 from app.config import load_config, QueryCfg
@@ -17,6 +18,36 @@ logging.basicConfig(
 )
 
 log = logging.getLogger("main")
+
+
+
+def _is_valid_http_url(url: str) -> bool:
+    if not url:
+        return False
+    parsed = urlparse(url.strip())
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def resolve_discord_webhook(config_webhook: str) -> str:
+    """Resolve webhook URL from config with env fallback and strict validation."""
+    env_webhook = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+    cfg_webhook = (config_webhook or "").strip()
+
+    is_missing_or_placeholder = (
+        not cfg_webhook
+        or cfg_webhook == "your_hook_url"
+        or (cfg_webhook.startswith("${") and cfg_webhook.endswith("}"))
+    )
+
+    resolved = env_webhook if is_missing_or_placeholder and env_webhook else cfg_webhook
+
+    if not _is_valid_http_url(resolved):
+        raise ValueError(
+            "Discord webhook non valido. Imposta un URL https:// valido in "
+            "queries[].discord.webhook_url oppure nella env DISCORD_WEBHOOK_URL."
+        )
+
+    return resolved
 
 def _to_float(value) -> float:
     try:
@@ -173,8 +204,9 @@ def main():
     log.info("ENV EBAY_CLIENT_SECRET present? %s", "EBAY_CLIENT_SECRET" in os.environ)
     log.info("ENV EBAY_SCOPE present? %s", "EBAY_SCOPE" in os.environ)
 
-    cfg = load_config("config.yaml")
-    log.info("Loaded config: %d queries", len(cfg.queries))
+    cfg_path = os.getenv("CONFIG_PATH", "config.yaml")
+    cfg = load_config(cfg_path)
+    log.info("Loaded config from %s: %d queries", cfg_path, len(cfg.queries))
 
     store_path = cfg.storage.get("sqlite_path", "./posted_items.sqlite")
     log.info("State store sqlite_path=%s", store_path)
@@ -192,6 +224,10 @@ def main():
     sched = QueryScheduler()
 
     for q in cfg.queries:
+        if q.enabled:
+            config_webhook = q.discord.webhook_url if q.discord else ""
+            q.discord.webhook_url = resolve_discord_webhook(config_webhook)
+
         log.info("Config query: name=%r enabled=%s interval=%ss webhook=%s",
                  q.name, q.enabled, q.interval_seconds,
                  ("SET" if (q.discord and q.discord.webhook_url) else "MISSING"))

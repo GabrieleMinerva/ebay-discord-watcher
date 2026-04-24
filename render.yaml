@@ -1,0 +1,44 @@
+# Render Blueprint
+# Questo servizio è un worker in background (non espone HTTP).
+services:
+  - type: worker
+    # Nome servizio in Render dashboard
+    name: ebay-discord-watcher
+    # Build dell'app tramite Dockerfile del repository
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Deploy automatico ad ogni push sul branch collegato
+    autoDeploy: true
+
+    # Variabili ambiente usate dal container
+    envVars:
+      # File di configurazione da caricare in runtime
+      - key: CONFIG_PATH
+        value: /app/config.render.yaml
+
+      # Livello di logging applicazione
+      - key: LOG_LEVEL
+        value: INFO
+
+      # Secret eBay OAuth (da impostare in Render dashboard)
+      - key: EBAY_CLIENT_ID
+        sync: false
+      - key: EBAY_CLIENT_SECRET
+        sync: false
+
+      # Scope OAuth standard eBay Browse API
+      - key: EBAY_SCOPE
+        value: https://api.ebay.com/oauth/api_scope
+
+      # Webhook Discord (segreto)
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+
+      # Chiave Google (segreto, opzionale/futura integrazione)
+      - key: GOOGLE_API_KEY
+        sync: false
+
+      # Path sqlite interno al container: consigliato su Persistent Disk
+      - key: SQLITE_PATH
+        value: /var/data/posted_items.sqlite
